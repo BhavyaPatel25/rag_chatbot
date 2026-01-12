@@ -15,18 +15,10 @@ embeddings = OpenAIEmbeddings(
     api_key=os.getenv("OPENAI_API_KEY")
 )
 
-if os.path.exists(VECTOR_DIR):
-    vectordb = Chroma(
-        persist_directory=VECTOR_DIR,
-        embedding_function=embeddings
-    )
-else:
+# IMPORTANT: Do NOT call persist() anywhere
+if not os.path.exists(VECTOR_DIR):
     loader = Docx2txtLoader(DOC_PATH)
     documents = loader.load()
-
-    print(f"Loaded {len(documents)} documents")
-    print(documents[0].page_content[:500])
-
 
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
@@ -40,7 +32,11 @@ else:
         embedding=embeddings,
         persist_directory=VECTOR_DIR
     )
-    vectordb.persist()
+else:
+    vectordb = Chroma(
+        persist_directory=VECTOR_DIR,
+        embedding_function=embeddings
+    )
 
 retriever = vectordb.as_retriever(search_kwargs={"k": 3})
 
