@@ -9,7 +9,10 @@ app = FastAPI(title="Hybrid RAG API with Session Memory")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://bhavyapatel25.netlify.app"],  # for now; can restrict later
+    allow_origins=[
+        "https://bhavyapatel25.netlify.app"
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -33,9 +36,10 @@ def chat(query: Query, request: Request, response: Response):
             key="session_id",
             value=session_id,
             httponly=True,
-            samesite="None",
-            secure=True 
+            samesite="none",  
+            secure=True       
         )
+
 
     # 3. Generate answer using session-specific memory
     answer = get_answer(
