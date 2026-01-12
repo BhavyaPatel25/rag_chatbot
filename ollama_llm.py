@@ -11,24 +11,32 @@ client = Client(
     }
 )
 
-MODEL = "gpt-oss:120b"
+MODEL = os.getenv("OLLAMA_MODEL", "gpt-oss:120b")
 
-def generate_answer(question: str, context: str) -> str:
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are a helpful assistant. "
-                "Answer the question using ONLY the context below. "
-                "If the answer is not in the context, say you do not know.\n\n"
-                f"Context:\n{context}"
-            )
-        },
-        {
-            "role": "user",
-            "content": question
-        }
-    ]
+def generate_answer(question: str, context: str, memory: list[dict]) -> str:
+    messages = []
+
+    # System instruction
+    messages.append({
+        "role": "system",
+        "content": (
+            "You are a helpful assistant. "
+            "Use the provided context to answer. "
+            "Use conversation history if relevant. "
+            "If the answer is not in the context, say you do not know.\n\n"
+            f"Context:\n{context}"
+        )
+    })
+
+    # Add conversation memory (FIFO, last 10)
+    for msg in memory:
+        messages.append(msg)
+
+    # Current user question
+    messages.append({
+        "role": "user",
+        "content": question
+    })
 
     response = client.chat(
         model=MODEL,
