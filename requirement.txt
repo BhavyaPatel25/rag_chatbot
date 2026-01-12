@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+ollama
+langchain
+langchain-community
+langchain-core
+langchain-chroma
+langchain-openai
+chromadb
+docx2txt
+python-dotenv
+tiktoken
