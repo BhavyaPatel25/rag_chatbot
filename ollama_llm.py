@@ -24,6 +24,7 @@ def generate_answer(question: str, context: str, memory: list[dict]) -> str:
             "Use the provided context to answer. "
             "Use conversation history if relevant. "
             "If the answer is not in the context, say you do not know.\n\n"
+            "Gender is Male"
             f"Context:\n{context}"
         )
     })
