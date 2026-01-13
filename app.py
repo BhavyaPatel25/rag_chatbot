@@ -26,10 +26,8 @@ def health():
 
 @app.post("/chat")
 def chat(query: Query, request: Request, response: Response):
-    # 1. Get session_id from cookie
     session_id = request.cookies.get("session_id")
 
-    # 2. If missing, generate a new one
     if not session_id:
         session_id = str(uuid.uuid4())
         response.set_cookie(
@@ -41,7 +39,6 @@ def chat(query: Query, request: Request, response: Response):
         )
 
 
-    # 3. Generate answer using session-specific memory
     answer = get_answer(
         question=query.question,
         session_id=session_id
