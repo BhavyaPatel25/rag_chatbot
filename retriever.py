@@ -15,7 +15,6 @@ embeddings = OpenAIEmbeddings(
     api_key=os.getenv("OPENAI_API_KEY")
 )
 
-# IMPORTANT: Do NOT call persist() anywhere
 if not os.path.exists(VECTOR_DIR):
     loader = Docx2txtLoader(DOC_PATH)
     documents = loader.load()
