@@ -30,11 +30,9 @@ def generate_answer(question: str, context: str, memory: list[dict]) -> str:
         )
     })
 
-    # Add conversation memory (FIFO, last 10)
     for msg in memory:
         messages.append(msg)
 
-    # Current user question
     messages.append({
         "role": "user",
         "content": question
