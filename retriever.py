@@ -21,7 +21,7 @@ if not os.path.exists(VECTOR_DIR):
 
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
-        chunk_overlap=50
+        chunk_overlap=75
     )
 
     chunks = splitter.split_documents(documents)
