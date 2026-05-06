@@ -1,9 +1,13 @@
-from fastapi import FastAPI, Request, Response
-from pydantic import BaseModel
-from fastapi.middleware.cors import CORSMiddleware
+import logging
 import uuid
 
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
 from rag_pipeline import get_answer
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Hybrid RAG API with Session Memory")
 
@@ -39,11 +43,10 @@ def chat(query: Query, request: Request, response: Response):
         )
 
 
-    answer = get_answer(
-        question=query.question,
-        session_id=session_id
-    )
+    try:
+        answer = get_answer(question=query.question, session_id=session_id)
+    except Exception as exc:
+        logger.exception("Error generating answer for session %s", session_id)
+        raise HTTPException(status_code=500, detail="Failed to generate a response. Please try again.") from exc
 
-    return {
-        "answer": answer
-    }
+    return {"answer": answer}
