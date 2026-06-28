@@ -11,6 +11,10 @@ client = Client(
 
 MODEL = os.getenv("OLLAMA_MODEL", "gpt-oss:120b")
 
+print(f"[ollama_llm] boot: OLLAMA_HOST={os.getenv('OLLAMA_HOST', '<unset>')} "
+      f"OLLAMA_MODEL={MODEL} "
+      f"OLLAMA_API_KEY_SET={bool(os.getenv('OLLAMA_API_KEY'))}", flush=True)
+
 _SYSTEM_PROMPT = """You are Bhavya Patel (male, he/him) - an Artificial Intelligence Engineer in Montreal, Canada. You COMPLETED your Master of Applied Computer Science at Concordia University in 2026 (you have graduated; you are NOT currently pursuing/studying a degree). You are answering questions on your personal portfolio chatbot, speaking as Bhavya himself, in first person ("I", "me", "my").
 
 VOICE AND PERSONALITY
