@@ -1,19 +1,36 @@
 import os
-from ollama import Client
 from dotenv import load_dotenv
 
 load_dotenv()
 
-client = Client(
-    host=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
-    headers={"Authorization": f"Bearer {os.getenv('OLLAMA_API_KEY', '')}"},
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "")
+MODEL = os.getenv("OLLAMA_MODEL", "gpt-oss:120b")
+# native = ollama python client (local Ollama); openai_compat = OpenAI lib -> /v1 (Ollama Cloud)
+CHAT_MODE = os.getenv("OLLAMA_CHAT_MODE", "native").lower()
+
+print(
+    f"[ollama_llm] boot: mode={CHAT_MODE} host={OLLAMA_HOST} model={MODEL} "
+    f"key_set={bool(OLLAMA_API_KEY)}",
+    flush=True,
 )
 
-MODEL = os.getenv("OLLAMA_MODEL", "gpt-oss:120b")
+if CHAT_MODE == "openai_compat":
+    from openai import OpenAI
 
-print(f"[ollama_llm] boot: OLLAMA_HOST={os.getenv('OLLAMA_HOST', '<unset>')} "
-      f"OLLAMA_MODEL={MODEL} "
-      f"OLLAMA_API_KEY_SET={bool(os.getenv('OLLAMA_API_KEY'))}", flush=True)
+    _base_url = os.getenv("OLLAMA_OPENAI_BASE_URL", OLLAMA_HOST.rstrip("/") + "/v1")
+    # OpenAI client requires a non-empty api_key string even when not needed.
+    _chat_client = OpenAI(base_url=_base_url, api_key=OLLAMA_API_KEY or "unused")
+    print(f"[ollama_llm] using OpenAI-compatible endpoint: {_base_url}", flush=True)
+else:
+    from ollama import Client
+
+    _chat_client = Client(
+        host=OLLAMA_HOST,
+        headers={"Authorization": f"Bearer {OLLAMA_API_KEY}"} if OLLAMA_API_KEY else {},
+    )
+    print("[ollama_llm] using native ollama client", flush=True)
+
 
 _SYSTEM_PROMPT = """You are Bhavya Patel (male, he/him) - an Artificial Intelligence Engineer in Montreal, Canada. You COMPLETED your Master of Applied Computer Science at Concordia University in 2026 (you have graduated; you are NOT currently pursuing/studying a degree). You are answering questions on your personal portfolio chatbot, speaking as Bhavya himself, in first person ("I", "me", "my").
 
@@ -44,11 +61,18 @@ IDENTITY RULES (hard)
 """
 
 
-def _chat(messages: list[dict], num_predict: int | None = None) -> str:
-    options = {"temperature": 0.7, "top_p": 0.9}
+def _chat(messages: list[dict], num_predict: int | None = None, temperature: float = 0.7) -> str:
+    if CHAT_MODE == "openai_compat":
+        kwargs = {"model": MODEL, "messages": messages, "temperature": temperature, "top_p": 0.9}
+        if num_predict is not None:
+            kwargs["max_tokens"] = num_predict
+        resp = _chat_client.chat.completions.create(**kwargs)
+        return resp.choices[0].message.content or ""
+
+    options = {"temperature": temperature, "top_p": 0.9}
     if num_predict is not None:
         options["num_predict"] = num_predict
-    response = client.chat(model=MODEL, messages=messages, stream=False, options=options)
+    response = _chat_client.chat(model=MODEL, messages=messages, stream=False, options=options)
     if hasattr(response, "message"):
         return response.message.content
     return response["message"]["content"]
@@ -84,9 +108,8 @@ def condense_question(question: str, memory: list[dict]) -> str:
         },
     ]
     try:
-        out = _chat(messages, num_predict=64).strip()
-        # Keep it on one line; if the model rambles, fall back to the original.
-        if out and len(out) < 400 and "?" in out or len(out) < 300:
+        out = _chat(messages, num_predict=64, temperature=0.2).strip()
+        if out and len(out) < 400 and ("?" in out or len(out) < 300):
             return out
         return question
     except Exception:
