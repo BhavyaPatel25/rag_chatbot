@@ -5,8 +5,10 @@ langchain
 langchain-community
 langchain-core
 langchain-chroma
+langchain-ollama
 langchain-openai
 chromadb
 docx2txt
+pypdf
 python-dotenv
 tiktoken
