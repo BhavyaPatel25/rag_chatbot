@@ -47,6 +47,6 @@ def chat(query: Query, request: Request, response: Response):
         answer = get_answer(question=query.question, session_id=session_id)
     except Exception as exc:
         logger.exception("Error generating answer for session %s", session_id)
-        raise HTTPException(status_code=500, detail="Failed to generate a response. Please try again.") from exc
+        raise HTTPException(status_code=500, detail=f"Failed to generate a response: {exc}") from exc
 
     return {"answer": answer}
