@@ -6,29 +6,39 @@ load_dotenv()
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "")
 MODEL = os.getenv("OLLAMA_MODEL", "gpt-oss:120b")
-# native = ollama python client (local Ollama); openai_compat = OpenAI lib -> /v1 (Ollama Cloud)
+
+# Chat backend:
+#   native        -> ollama python client (local Ollama, /api/chat)
+#   openai_compat -> OpenAI lib pointed at Ollama Cloud's /v1 endpoint
+#   openai        -> OpenAI lib pointed at OpenAI (guaranteed reachable from Render)
 CHAT_MODE = os.getenv("OLLAMA_CHAT_MODE", "native").lower()
+
+OPENAI_CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
 
 print(
     f"[ollama_llm] boot: mode={CHAT_MODE} host={OLLAMA_HOST} model={MODEL} "
-    f"key_set={bool(OLLAMA_API_KEY)}",
+    f"openai_chat_model={OPENAI_CHAT_MODEL} key_set={bool(OLLAMA_API_KEY)}",
     flush=True,
 )
 
-if CHAT_MODE == "openai_compat":
+if CHAT_MODE == "openai":
     from openai import OpenAI
-
+    _chat_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    _chat_model = OPENAI_CHAT_MODEL
+    print("[ollama_llm] using OpenAI chat (api.openai.com)", flush=True)
+elif CHAT_MODE == "openai_compat":
+    from openai import OpenAI
     _base_url = os.getenv("OLLAMA_OPENAI_BASE_URL", OLLAMA_HOST.rstrip("/") + "/v1")
-    # OpenAI client requires a non-empty api_key string even when not needed.
     _chat_client = OpenAI(base_url=_base_url, api_key=OLLAMA_API_KEY or "unused")
+    _chat_model = MODEL
     print(f"[ollama_llm] using OpenAI-compatible endpoint: {_base_url}", flush=True)
 else:
     from ollama import Client
-
     _chat_client = Client(
         host=OLLAMA_HOST,
         headers={"Authorization": f"Bearer {OLLAMA_API_KEY}"} if OLLAMA_API_KEY else {},
     )
+    _chat_model = MODEL
     print("[ollama_llm] using native ollama client", flush=True)
 
 
@@ -62,17 +72,17 @@ IDENTITY RULES (hard)
 
 
 def _chat(messages: list[dict], num_predict: int | None = None, temperature: float = 0.7) -> str:
-    if CHAT_MODE == "openai_compat":
-        kwargs = {"model": MODEL, "messages": messages, "temperature": temperature, "top_p": 0.9}
+    if CHAT_MODE in ("openai", "openai_compat"):
+        kwargs = {"model": _chat_model, "messages": messages, "temperature": temperature, "top_p": 0.9}
         if num_predict is not None:
             kwargs["max_tokens"] = num_predict
         resp = _chat_client.chat.completions.create(**kwargs)
-        return resp.choices[0].message.content or ""
+        return (resp.choices[0].message.content or "").strip()
 
     options = {"temperature": temperature, "top_p": 0.9}
     if num_predict is not None:
         options["num_predict"] = num_predict
-    response = _chat_client.chat(model=MODEL, messages=messages, stream=False, options=options)
+    response = _chat_client.chat(model=_chat_model, messages=messages, stream=False, options=options)
     if hasattr(response, "message"):
         return response.message.content
     return response["message"]["content"]
